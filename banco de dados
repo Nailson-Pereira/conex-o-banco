@@ -11,18 +11,75 @@
 // 5. ler o arquivo de cidades
 // 5.1 linha alinha fazer o insert
 
-$servername = "localhost";
-$username = "nailson";
+$servername = 'localhost';
+$username = 'root';
 $password = '';
 
-try {
-    $conn = new PDO("mysql:host=$servername;dbname=myDB", $username, $password);
-    // set the PDO error mode to exception
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    echo "Connected successfully";
-    }
-catch(PDOException $e)
-    {
-    echo "Connection failed: " . $e->getMessage();
-    }
-?>
+
+function get_connection(){
+    $dbh = new PDO(dsn:'mysql:host=db; dbname=mysql', username:'root', password:'');
+    return $dbh;
+}
+
+$dbh->query("DROP DATABASE IF EXISTS `atividade1`;
+CREATE DATABASE IF NOT EXISTS `atividade1` /*!40100 DEFAULT CHARACTER SET utf8mb4 */;
+USE `atividade1`;
+
+DROP TABLE IF EXISTS `atividade1`.`estado`;
+CREATE TABLE IF NOT EXISTS `atividade1`.`estado` (
+  `cod_uf` varchar(2) NOT NULL,
+  `cod_ibge` int(11) NOT NULL DEFAULT '0',
+  `nome_estado` varchar(255) NOT NULL DEFAULT '0',
+  `nome_regiao` varchar(255) NOT NULL DEFAULT '0',
+  `quantidade_cidades` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`cod_uf`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `atividade1`.`municipio`;
+CREATE TABLE IF NOT EXISTS `atividade1`.`municipio` (
+  `cod_ibge` int(11) NOT NULL,
+  `cod_uf` varchar(2) NOT NULL,
+  `nome_municipio` varchar(255) NOT NULL,
+  `nome_regiao` varchar(255) NOT NULL,
+  `quantidade_populacao` int(11) NOT NULL,
+  `tipo_porte` varchar(255) NOT NULL,
+  PRIMARY KEY (`cod_ibge`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;");
+
+$funcao = function($linha){
+	return str_getcsv($linha,';','','');
+};
+
+$estados = array_map($funcao, file('lista_estados.csv'));
+unset($estados[0]);
+
+foreach ($estados as $key => $dados) {
+	$query = $dbh->prepare('INSERT INTO estado values(:codigo,:numero_ibge,:estados,:regiao,:cidades)');
+	$query->execute(array(
+		':codigo' => $dados[2],
+		':numero_ibge' => $dados[0],
+		':estados' => $dados[1],
+		':regiao' => $dados[3],
+		':cidades' => $dados[4]
+	));
+}
+
+$municipios = array_map($funcao, file('lista_muncipios.csv'));
+
+unset($municipios[0]);
+
+foreach ($municipios as $key => $dados) {
+	if(!isset($dados[6])){
+		echo 'Pulando cidade que falta dados: '.$dados['4'].'<br>';
+		continue;
+	}
+	$query = $dbh->prepare('INSERT INTO municipio values(:codigo,:uf,:nome,:regiao,:habitantes,:porte)');
+	$query->execute(array(
+		':codigo' => $dados[1],
+		':uf' => $dados[3],
+		':nome' => $dados[4],
+		':regiao' => $dados[5],
+		':habitantes' => $dados[6],
+		':porte' => $dados[7]
+	));
+}
